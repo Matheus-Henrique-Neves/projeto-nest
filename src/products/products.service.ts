@@ -1,18 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import{ Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
 export class ProductsService {
-  constructor(@InjectRepository(Product)
-  private productRepository: Repository<Product>){}
+  constructor(
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
+  ) {}
 
   create(createProductDto: CreateProductDto) {
-    const newProduct = this.productRepository.create(createProductDto);
-    return this.productRepository.save(newProduct);
+    const product = this.productRepository.create(createProductDto);
+    return this.productRepository.save(product);
   }
 
   findAll() {
@@ -20,10 +22,11 @@ export class ProductsService {
   }
 
   async findOne(id: number) {
-    const product = await this.productRepository.findOneBy({id});
-    if(!product){
-      throw new NotFoundException('Product não encontrado');
+    const product = await this.productRepository.findOneBy({ id });
+    if (!product) {
+      throw new NotFoundException('Produto não encontrado');
     }
+
     return product;
   }
 
