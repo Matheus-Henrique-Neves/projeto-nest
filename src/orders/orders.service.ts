@@ -16,35 +16,38 @@ export class OrdersService {
     private orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
-  ) {}
+  ) { }
 
+  productSum(produtos: Product[], createOrderDto: CreateOrderDto): number{
+    return produtos.reduce((acc, product) => {
+      const item = createOrderDto.products.find(
+        (item) => item.productId === product.id
+      );
+
+      if(!item) return acc
+
+      return acc + product.price * item.quantity;
+    }, 0)
+  }
   async create(createOrderDto: CreateOrderDto) {
     const produtos = await this.productRepository.find({
       where: {
-        id: In(createOrderDto.products.map((produto) => produto.productId)),
-      },
+        id: In(createOrderDto.products.map((produto) => produto.productId))
+      }
     });
 
-    const total = produtos.reduce((acc, product) => {
-      const item = createOrderDto.products.find(
-        (item) => item.productId === product.id,
-      );
-
-      if (!item) return acc;
-
-      return acc + product.price * item.quantity;
-    }, 0);
+    const total = this.productSum(produtos, createOrderDto);
 
     const order = this.orderRespository.create({
       total,
-      userId: createOrderDto.userId,
+      userId: createOrderDto.userId
     });
 
-    await this.orderRespository.save(order);
+    const orderCreated = await this.orderRespository.save(order);
 
     const items = produtos.map((product) => {
       const item = createOrderDto.products.find(
-        (item) => item.productId === product.id,
+        (item) => item.productId === product.id
       );
 
       const qtd = item ? item.quantity : 0;
@@ -54,12 +57,12 @@ export class OrdersService {
         price: product.price,
         total: product.price * qtd,
         orderId: order.id,
-        productId: product.id,
+        productId: product.id
       });
     });
     await this.orderItemRepository.save(items);
 
-    return order;
+    return orderCreated;
   }
 
   findAll() {

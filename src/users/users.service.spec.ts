@@ -1,22 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
+
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
-import * as bcrytpt from 'bcrypt';
+import * as bcrypt from 'bcrypt';
+import { NotFoundException } from '@nestjs/common';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let repository: Repository<User>
+  let repository: Repository<User>;
 
   const mockRepository = {
     find: jest.fn(),
     findOneBy: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    merge: jest.fn(),
+    remove: jest.fn()
   }
 
   beforeEach(async () => {
@@ -28,50 +31,88 @@ describe('UsersService', () => {
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    repository = module.get<Repository<User>>(getRepositoryToken(User));
+    repository = module.get<Repository<User>>(getRepositoryToken(User))
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe('FindAll', () => {
-    it('should return an array of users', async () => {
+  describe('findAll', () => {
+    it('deve retornar um array de Users', async () => {
       const users = [
-        { id: 1, email: "teste@teste.com", name: "teste", password: "123456" },
-        { id: 2, email: "teste2@teste.com", name: "teste2", password: "1234567" }
+        {id: 1, name: 'Teste', email: 'teste@teste.com', password: 'teste'},
+        {id: 2, name: 'Teste2', email: 'teste2@teste.com', password: 'teste'}
       ]
-      mockRepository.find.mockResolvedValue(users);
+
+      mockRepository.find.mockResolvedValue(users)
       const result = await service.findAll();
-      expect(result).toEqual(users);
+      expect(result).toEqual(users)
     })
-  });
-  describe('FindOne', () => {
-    it('should return a user by email', async () => {
-      const user = { id: 1, email: "teste@teste.com", name: "teste", password: "123456" }
-      mockRepository.findOneBy.mockResolvedValue(user);
-      const result = await service.findOneByEmail(user.email);
-      expect(result).toEqual(user);
-    
+  })
+
+  describe('findOneByEmail', () => {
+    it('deve retornar um user pelo email', async () => {
+      const user = {id: 1, name: 'Teste', email: 'email@email.com', password: 'teste'}
+      mockRepository.findOneBy.mockResolvedValue(user)
+
+      const result = await service.findOneByEmail('email@email.com')
+      expect(result).toEqual(user)
+    })
+
+    it('deve retornar um erro se o user não for encontrado', async () => {
+      const email = 'email@naoexiste.com';
+      mockRepository.findOneBy.mockResolvedValue(undefined);
+
+      await expect(service.findOneByEmail(email)).rejects.toThrow(NotFoundException);
     });
-  describe('Create', () => {
-    it('should create a user', async () => {
-      const createUserDTO:CreateUserDto= { email: "teste@teste.com", name: "teste", password: "123456" }
-      const hashPassword="senhahash"
-      jest.spyOn(bcrytpt, 'hash').mockResolvedValue(hashPassword);
-      const user = { id: 1, ...createUserDTO, password: hashPassword }
+  })
+
+  describe('create', () => {
+    it('deve criar um novo user', async () => {
+      const createUserDto: CreateUserDto = {
+        name: 'Teste',
+        email: 'teste@teste.com',
+        password: 'senha'
+      }
+
+      const hashSenha = 'senhaHash'
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue(hashSenha)
+      const user = {id: 1, ...createUserDto, password: hashSenha}
+
       mockRepository.create.mockReturnValue(user);
       mockRepository.save.mockResolvedValue(user);
-      const result = await service.create(createUserDTO);
+
+      const result = await service.create(createUserDto)
+      console.log(result)
       expect(result).toEqual(user);
-
-
-
     })
-  });
+  })
 
+  describe('update', () => {
+    it('deve atualizar um user', async () => {
+      const updateUserDto: UpdateUserDto = { name: 'Nome alterado' };
+      const user = {id: 1, name: 'Nome', email: 'email@email.com'};
+      const updatedUser = { ...user, ...updateUserDto };
 
+      mockRepository.findOneBy.mockResolvedValue(user);
+      mockRepository.merge.mockResolvedValue(updatedUser);
+      mockRepository.save.mockResolvedValue(updatedUser);
 
+      const result = await service.update(1, updateUserDto);
+      expect(result).toEqual(updatedUser);
+    })
+  })
 
+  describe('remove', () => {
+    it('deve remover um user', async () => {
+      const user = {id: 1, name: 'Teste', email: 'teste@teste.com' }
+      mockRepository.findOneBy.mockResolvedValue(user)
+      mockRepository.remove.mockResolvedValue(user)
 
+      const result = await service.remove(1)
+      expect(result).toEqual(user)
+    })
+  })
 });
+
