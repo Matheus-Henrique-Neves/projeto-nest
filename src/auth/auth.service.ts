@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { access } from 'fs';
 import { UsersService } from 'src/users/users.service';
 
 @Injectable()
@@ -26,7 +25,7 @@ export class AuthService {
       id: user.id,
     };
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: await this.jwtService.sign(payload),
     };
   }
 }
